@@ -1,6 +1,10 @@
 package server
 
-import "nhooyr.io/websocket"
+import (
+	"encoding/json"
+
+	"nhooyr.io/websocket"
+)
 
 type Client struct {
 	Conn *websocket.Conn
@@ -49,7 +53,11 @@ type MidiEvent struct {
 
 type Chord struct {
     ChordSymbol string `json:"chordSymbol"`
-    MidiValues  []uint8 `json:"midiValues"`
+    MidiValues  []uint8
+}
+
+func (c Chord) MarshalJSON() ([]byte, error) {
+    return json.Marshal(c.ChordSymbol)
 }
 
 // Using an interface{} as it can be of several types
