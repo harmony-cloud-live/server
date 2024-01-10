@@ -12,6 +12,7 @@ import (
 	"github.com/harmony-cloud-live/server/internal/midi"
 	"github.com/harmony-cloud-live/server/internal/osc"
 	"github.com/harmony-cloud-live/server/internal/server"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -37,7 +38,15 @@ func run() error {
 	defer midiPlayer.Close()
 	
 	oscClient := osc.NewOscClient("localhost", 8765)
-	h := server.NewHarmonyCloudServer(midiPlayer, oscClient)
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+		Password: "",
+		DB: 0,
+	})
+	defer redisClient.Close()
+
+	h := server.NewHarmonyCloudServer(midiPlayer, oscClient, redisClient)
 
 	s := &http.Server{
 		Handler: h,

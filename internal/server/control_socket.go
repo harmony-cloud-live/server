@@ -30,7 +30,7 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 	case GetMainSequence:
 		return h.marshalAndSend(ctx, c, NewMainSequence, h.mainSequence)
 	case GetClients:
-		h.logf("get clients", h.clients[userId])
+		h.logf("get clients %s", h.clients[userId].Username)
 		return h.marshalAndSend(ctx, c, GetClients, h.getClients())
 	case GetLeader:
 		return h.marshalAndSend(ctx, c, GetLeader, h.getLeader())
@@ -38,7 +38,10 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		if username, ok := evt.Payload.(string); ok {
 			if h.clients[userId] == nil || h.clients[userId].Username != username {
 				h.logf("set username: %v", evt.Payload)
-				h.addClient(userId, username, c)
+				err := h.addClient(ctx, userId, username, c)
+				if err != nil {
+					return err
+				}
 				return h.marshalAndBroadcast(ctx, userId, GetClients, h.getClients())
 			}
 		}
@@ -71,7 +74,7 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		}
 	case NewMainSequence:
 		h.logf("new main sequence: %v", evt.Payload)
-		h.mainSequence = getDummyData()
+		h.newMainSequence(ctx)
 		return h.marshalAndBroadcast(ctx, userId, NewMainSequence, h.mainSequence)
 	case NewLeader:
 		h.logf("new leader: %v", evt.Payload)
@@ -105,14 +108,33 @@ func (h *HarmonyCloudServer) marshalAndBroadcast(ctx context.Context,
 }
 
 func (h *HarmonyCloudServer) setLeader(ctx context.Context, newLeader *Client) error {
+	h.mu.Lock()
 	h.leader = newLeader
-	// do we need to get senderId
+	h.mu.Unlock()
+
+	err := h.cacheLeader(ctx)
+	if err != nil {
+		h.logf("failed to cache leader: %v", err)
+	}
 	return h.marshalAndBroadcast(ctx, "", GetLeader, h.getLeader())
 }
 
 func (h *HarmonyCloudServer) getLeader() string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
 	if h.leader == nil {
 		return ""
 	}
 	return fmt.Sprintf("%v|%v", h.leader.UserId, h.leader.Username)
+}
+
+func (h *HarmonyCloudServer) cacheLeader(ctx context.Context) error {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.leader == nil {
+		return nil
+	}
+	return h.redisClient.Set(ctx, "leaderId", h.leader.UserId, 0).Err()
 }
