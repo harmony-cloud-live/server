@@ -39,14 +39,14 @@ func run() error {
 	
 	oscClient := osc.NewOscClient("localhost", 8765)
 
-	redisClient := redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 		Password: "",
 		DB: 0,
 	})
-	defer redisClient.Close()
+	defer rdb.Close()
 
-	h := server.NewHarmonyCloudServer(midiPlayer, oscClient, redisClient)
+	h := server.NewHarmonyCloudServer(midiPlayer, oscClient, rdb)
 
 	s := &http.Server{
 		Handler: h,

@@ -18,13 +18,12 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 
 	evt, err := unmarshalMidiEvent(rawMsg)
 	if err != nil {
-		h.logf("failed to unmarshal control event: %v", err)
 		return err
 	}
 	
 	switch evt.Type {
 	case ChordDown:
-		if evt.Index >= len(h.mainSequence) {
+		if evt.Index < 0 || evt.Index >= len(h.mainSequence) {
 			return fmt.Errorf("invalid index")
 		}
 
@@ -36,4 +35,3 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 
 	return err
 }
-

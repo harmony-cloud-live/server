@@ -21,9 +21,9 @@ func (h *HarmonyCloudServer) upgradeControlSocket(w http.ResponseWriter, r *http
 }
 
 func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId string) error {
-	h.logf("closeControlSocket: %v", h.clients[userId])
+	h.logf("closeControlSocket: %v", h.clients[userId].Username)
 	delete(h.clients, userId)
-	if h.leader.UserId == userId {
+	if h.leader != nil && h.leader.UserId == userId {
 		for _, c := range h.clients {
 			if c != nil {
 				err := h.setLeader(ctx, c)
@@ -62,7 +62,6 @@ func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-
 }
 
 func getUserId(req *http.Request) (string, error) {
@@ -75,9 +74,9 @@ func getUserId(req *http.Request) (string, error) {
 }
 
 func (h *HarmonyCloudServer) broadcast(ctx context.Context, senderId string, msg []byte) error {
-	for _, u := range h.clients {
-		if u.UserId != senderId {
-			err := u.Conn.Write(ctx, websocket.MessageBinary, msg)
+	for _, c := range h.clients {
+		if c.UserId != senderId {
+			err := c.Conn.Write(ctx, websocket.MessageBinary, msg)
 			if err != nil {
 				return err
 			}

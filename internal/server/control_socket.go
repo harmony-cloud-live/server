@@ -18,7 +18,6 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 	
 	evt, err := unmarshalControlEvent(rawMsg)
 	if err != nil {
-		h.logf("failed to unmarshal control event: %v", err)
 		return err
 	}
 
@@ -36,7 +35,7 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		return h.marshalAndSend(ctx, c, GetLeader, h.getLeader())
 	case SetUsername:
 		if username, ok := evt.Payload.(string); ok {
-			if h.clients[userId] == nil || h.clients[userId].Username != username {
+			if h.clients[userId] == nil || h.clients[userId].Username != username || h.clients[userId].Conn != c {
 				h.logf("set username: %v", evt.Payload)
 				err := h.addClient(ctx, userId, username, c)
 				if err != nil {
@@ -74,8 +73,7 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		}
 	case NewMainSequence:
 		h.logf("new main sequence: %v", evt.Payload)
-		h.newMainSequence(ctx)
-		return h.marshalAndBroadcast(ctx, userId, NewMainSequence, h.mainSequence)
+		return h.newMainSequence(ctx)
 	case NewLeader:
 		h.logf("new leader: %v", evt.Payload)
 		if newLeaderId, ok := evt.Payload.(string); ok {
@@ -85,26 +83,20 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			return h.setLeader(ctx, h.clients[newLeaderId])
 		}
 	}
-
 	return err
 }
 
-func (h *HarmonyCloudServer) marshalAndSend(ctx context.Context, 
-	c *websocket.Conn, eventType ControlEventType, payload ControlPayload) error {
-	msg, err := marshalControlEvent(eventType, payload)
-	if err != nil {
-		return err
-	}
-	return c.Write(ctx, websocket.MessageBinary, msg)
-}
+func (h *HarmonyCloudServer) newMainSequence(ctx context.Context) error {
+    h.currentIndex = 0
+    h.currentBeat = 0
+    h.mainSequence = getDummyData()
 
-func (h *HarmonyCloudServer) marshalAndBroadcast(ctx context.Context, 
-	userId string, eventType ControlEventType, payload ControlPayload) error {
-	msg, err := marshalControlEvent(eventType, payload)
+	err := h.marshalAndBroadcast(ctx, "", NewMainSequence, h.mainSequence)
 	if err != nil {
 		return err
 	}
-	return h.broadcast(ctx, userId, msg)
+	h.cacheMainSequence(ctx)
+	return nil
 }
 
 func (h *HarmonyCloudServer) setLeader(ctx context.Context, newLeader *Client) error {
@@ -112,11 +104,12 @@ func (h *HarmonyCloudServer) setLeader(ctx context.Context, newLeader *Client) e
 	h.leader = newLeader
 	h.mu.Unlock()
 
-	err := h.cacheLeader(ctx)
+	err := h.marshalAndBroadcast(ctx, "", GetLeader, h.getLeader())
 	if err != nil {
-		h.logf("failed to cache leader: %v", err)
+		return err
 	}
-	return h.marshalAndBroadcast(ctx, "", GetLeader, h.getLeader())
+	h.cacheLeaderId(ctx)
+	return nil
 }
 
 func (h *HarmonyCloudServer) getLeader() string {
@@ -129,12 +122,27 @@ func (h *HarmonyCloudServer) getLeader() string {
 	return fmt.Sprintf("%v|%v", h.leader.UserId, h.leader.Username)
 }
 
-func (h *HarmonyCloudServer) cacheLeader(ctx context.Context) error {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	if h.leader == nil {
-		return nil
+func (h *HarmonyCloudServer) addClient(ctx context.Context, userId string, username string, c *websocket.Conn) error {
+	h.clients[userId] = &Client{
+		Conn: c,
+		UserId: userId,
+		Username: username,
 	}
-	return h.redisClient.Set(ctx, "leaderId", h.leader.UserId, 0).Err()
+	if h.leader == nil && h.cachedLeaderId != "" && h.clients[h.cachedLeaderId] != nil {
+		h.logf("auto set leader from cache: %v", h.clients[h.cachedLeaderId])
+		return h.setLeader(ctx, h.clients[h.cachedLeaderId])
+	}
+	if h.leader != nil && h.leader.UserId == userId {
+		h.logf("reconnecting leader: %v", h.clients[userId])
+		return h.setLeader(ctx, h.clients[userId])
+	}
+	return nil
+}
+
+func (h *HarmonyCloudServer) getClients() []*ClientData {
+	var clients []*ClientData
+	for _, c := range h.clients {
+		clients = append(clients, &ClientData{UserId: c.UserId, Username: c.Username})
+	}
+	return clients
 }

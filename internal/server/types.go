@@ -67,4 +67,3 @@ type ControlEvent struct {
     Type    ControlEventType
     Payload ControlPayload
 }
-
