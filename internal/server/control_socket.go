@@ -43,6 +43,8 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 				}
 				return h.marshalAndBroadcast(ctx, userId, GetClients, h.getClients())
 			}
+		} else {
+			return fmt.Errorf("invalid username")
 		}
 	case NewIndex:
 		h.logf("new index: %v", evt.Payload)
@@ -61,6 +63,8 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			chord := h.mainSequence[h.currentIndex]
 			h.oscClient.SendNotes(chord.MidiValues)
 			h.oscClient.SendChordSymbol(chord.ChordSymbol)
+		} else {
+			return fmt.Errorf("invalid index")
 		}
 	case NewBeat:
 		h.logf("new beat: %v", evt.Payload)
@@ -70,6 +74,8 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		if newBeat, ok := evt.Payload.(int); ok {
 			h.currentBeat = newBeat
 			return h.marshalAndBroadcast(ctx, userId, NewBeat, h.currentBeat)
+		} else {
+			return fmt.Errorf("invalid beat")
 		}
 	case NewMainSequence:
 		h.logf("new main sequence: %v", evt.Payload)
@@ -81,6 +87,8 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 				return fmt.Errorf("invalid user")
 			}
 			return h.setLeader(ctx, h.clients[newLeaderId])
+		} else {
+			return fmt.Errorf("invalid leaderId")
 		}
 	}
 	return err

@@ -60,7 +60,6 @@ func (c Chord) MarshalJSON() ([]byte, error) {
     return json.Marshal(c.ChordSymbol)
 }
 
-// Using an interface{} as it can be of several types
 type ControlPayload interface{}
 
 type ControlEvent struct {

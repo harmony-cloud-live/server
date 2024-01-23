@@ -8,7 +8,6 @@ import (
 	"nhooyr.io/websocket"
 )
 
-
 type eventHandler func(ctx context.Context, c *websocket.Conn, userId string) error
 type closeFunc func(ctx context.Context, userId string) error
 
