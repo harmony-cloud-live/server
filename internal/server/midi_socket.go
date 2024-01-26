@@ -28,7 +28,7 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 		}
 		h.midiPlayer.PlayChord(h.mainSequence[evt.Index].MidiValues)
 	case StopAll:
-		h.midiPlayer.StopAll()
+		h.midiPlayer.StopCurrentChord()
 		h.oscClient.SendRelease()
 	}
 
