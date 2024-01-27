@@ -26,9 +26,18 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 		if evt.Index < 0 || evt.Index >= len(h.mainSequence) {
 			return fmt.Errorf("invalid index")
 		}
-		h.midiPlayer.PlayChord(h.mainSequence[evt.Index].MidiValues)
+		chord := h.mainSequence[evt.Index]
+		h.midiPlayer.PlayChord(chord.MidiValues)
+		h.oscClient.SendNotes(chord.MidiValues)
+		h.oscClient.SendChordSymbol(chord.ChordSymbol)
+	case ChordUp:
+		if evt.Index < 0 || evt.Index >= len(h.mainSequence) {
+			return fmt.Errorf("invalid index")
+		}
+		h.midiPlayer.StopChord(h.mainSequence[evt.Index].MidiValues)
+		h.oscClient.SendRelease()
 	case StopAll:
-		h.midiPlayer.StopCurrentChord()
+		h.midiPlayer.StopAll()
 		h.oscClient.SendRelease()
 	}
 

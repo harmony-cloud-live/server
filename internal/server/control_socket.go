@@ -23,40 +23,38 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 
 	switch evt.Type {
 	case GetIndex:
-		return h.marshalAndSend(ctx, c, NewIndex, h.currentIndex)
+		return h.marshalAndSend(ctx, c, NewIndex, ControlPayload{Index: h.currentIndex})
 	case GetBeat:
-		return h.marshalAndSend(ctx, c, NewBeat, h.currentBeat)
+		return h.marshalAndSend(ctx, c, NewBeat, ControlPayload{Beat: h.currentBeat})
 	case GetMainSequence:
-		return h.marshalAndSend(ctx, c, NewMainSequence, h.mainSequence)
+		return h.marshalAndSend(ctx, c, NewMainSequence, ControlPayload{Chords: h.mainSequence})
 	case GetClients:
-		h.logf("get clients %s", h.clients[userId].Username)
-		return h.marshalAndSend(ctx, c, GetClients, h.getClients())
+		return h.marshalAndSend(ctx, c, GetClients, ControlPayload{Clients: h.getClients()})
 	case GetLeader:
-		return h.marshalAndSend(ctx, c, GetLeader, h.getLeader())
+		return h.marshalAndSend(ctx, c, GetLeader, ControlPayload{LeaderId: h.getLeader()})
+	case GetTimeSignature:
+		return h.marshalAndSend(ctx, c, NewTimeSignature, ControlPayload{TimeSignature: h.timeSignature})
 	case SetUsername:
-		if username, ok := evt.Payload.(string); ok {
+		username := evt.Payload.Username
+		if username != "" {
 			if h.clients[userId] == nil || h.clients[userId].Username != username || h.clients[userId].Conn != c {
-				h.logf("set username: %v", evt.Payload)
 				err := h.addClient(ctx, userId, username, c)
 				if err != nil {
 					return err
 				}
-				return h.marshalAndBroadcast(ctx, userId, GetClients, h.getClients())
+				return h.marshalAndBroadcast(ctx, userId, GetClients, ControlPayload{Clients: h.getClients()})
 			}
 		} else {
 			return fmt.Errorf("invalid username")
 		}
 	case NewIndex:
-		h.logf("new index: %v", evt.Payload)
 		if h.leader != h.clients[userId] {
 			return fmt.Errorf("only leader can set index")
 		}
-		if newIndex, ok := evt.Payload.(int); ok {
-			if newIndex < 0 || newIndex >= len(h.mainSequence) {
-				return fmt.Errorf("invalid index")
-			}
+		newIndex := evt.Payload.Index
+		if newIndex >= 0 && newIndex < len(h.mainSequence) {
 			h.currentIndex = newIndex
-			err := h.marshalAndBroadcast(ctx, userId, NewIndex, h.currentIndex)
+			err := h.marshalAndBroadcast(ctx, userId, NewIndex, ControlPayload{Index: h.currentIndex})
 			if err != nil {
 				return err
 			}
@@ -67,22 +65,32 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			return fmt.Errorf("invalid index")
 		}
 	case NewBeat:
-		h.logf("new beat: %v", evt.Payload)
 		if h.leader != h.clients[userId] {
 			return fmt.Errorf("only leader can set beat")
 		}
-		if newBeat, ok := evt.Payload.(int); ok {
+		newBeat := evt.Payload.Beat
+		if newBeat >= 0 && newBeat < int(h.timeSignature.Upper) {
 			h.currentBeat = newBeat
-			return h.marshalAndBroadcast(ctx, userId, NewBeat, h.currentBeat)
+			return h.marshalAndBroadcast(ctx, userId, NewBeat, ControlPayload{Beat: h.currentBeat})
 		} else {
 			return fmt.Errorf("invalid beat")
 		}
 	case NewMainSequence:
-		h.logf("new main sequence: %v", evt.Payload)
 		return h.newMainSequence(ctx)
+	case NewTimeSignature:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("only leader can set time signature")
+		}
+		newTimeSignature := evt.Payload.TimeSignature
+		if newTimeSignature.isValid() {
+			h.timeSignature = newTimeSignature
+			return h.marshalAndBroadcast(ctx, "", NewTimeSignature, ControlPayload{TimeSignature: h.timeSignature})
+		} else {
+			return fmt.Errorf("invalid time signature")
+		}
 	case NewLeader:
-		h.logf("new leader: %v", evt.Payload)
-		if newLeaderId, ok := evt.Payload.(string); ok {
+		newLeaderId := evt.Payload.LeaderId
+		if newLeaderId != "" {
 			if h.clients[newLeaderId] == nil {
 				return fmt.Errorf("invalid user")
 			}
@@ -99,7 +107,7 @@ func (h *HarmonyCloudServer) newMainSequence(ctx context.Context) error {
     h.currentBeat = 0
     h.mainSequence = getDummyData()
 
-	err := h.marshalAndBroadcast(ctx, "", NewMainSequence, h.mainSequence)
+	err := h.marshalAndBroadcast(ctx, "", NewMainSequence, ControlPayload{Chords: h.mainSequence})
 	if err != nil {
 		return err
 	}
@@ -112,7 +120,7 @@ func (h *HarmonyCloudServer) setLeader(ctx context.Context, newLeader *Client) e
 	h.leader = newLeader
 	h.mu.Unlock()
 
-	err := h.marshalAndBroadcast(ctx, "", GetLeader, h.getLeader())
+	err := h.marshalAndBroadcast(ctx, "", GetLeader, ControlPayload{LeaderId: h.leader.UserId})
 	if err != nil {
 		return err
 	}
@@ -127,7 +135,7 @@ func (h *HarmonyCloudServer) getLeader() string {
 	if h.leader == nil {
 		return ""
 	}
-	return fmt.Sprintf("%v|%v", h.leader.UserId, h.leader.Username)
+	return h.leader.UserId
 }
 
 func (h *HarmonyCloudServer) addClient(ctx context.Context, userId string, username string, c *websocket.Conn) error {

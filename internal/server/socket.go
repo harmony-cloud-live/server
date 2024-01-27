@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,7 +21,7 @@ func (h *HarmonyCloudServer) upgradeControlSocket(w http.ResponseWriter, r *http
 }
 
 func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId string) error {
-	h.logf("closeControlSocket: %v", h.clients[userId].Username)
+	h.logf("closeControlSocket: %v", h.clients[userId])
 	delete(h.clients, userId)
 	if h.leader != nil && h.leader.UserId == userId {
 		for _, c := range h.clients {
@@ -33,7 +34,7 @@ func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId stri
 			}
 		}
 	}
-	return h.marshalAndBroadcast(ctx, "", GetClients, h.getClients())
+	return h.marshalAndBroadcast(ctx, "", GetClients, ControlPayload{Clients: h.getClients()})
 }
 
 func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Request, handler eventHandler, close closeFunc) {
@@ -55,6 +56,7 @@ func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Reques
 	for {
 		err = handler(r.Context(), c, userId)
 		if err != nil {
+			fmt.Println("socket error", err)
 			if close != nil {
 				close(r.Context(), userId)
 			}

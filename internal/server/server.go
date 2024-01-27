@@ -26,6 +26,7 @@ type HarmonyCloudServer struct {
 	
 	currentIndex int
 	currentBeat int
+	timeSignature TimeSignature
 	mainSequence []Chord
 }
 
@@ -42,6 +43,7 @@ func NewHarmonyCloudServer(midiPlayer *midi.MidiPlayer, oscClient *osc.OscClient
 
 		currentIndex: 0,
 		currentBeat: 0,
+		timeSignature: TimeSignature{Upper: 4, Lower: 4},
 	}
 	h.serveMux.HandleFunc("/midi", h.upgradeMidiSocket)
 	h.serveMux.HandleFunc("/control", h.upgradeControlSocket)

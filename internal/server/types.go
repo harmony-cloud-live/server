@@ -40,10 +40,43 @@ const (
     NewLeader                        // 9
     SetUsername                      // 10
     GetClients                       // 11
+    GetTimeSignature                 // 12
+    NewTimeSignature                 // 13
 )
 
 func (c ControlEventType) String() string {
-	return [...]string{"GetIndex", "NewIndex", "GetBeat", "NewBeat", "GetMainSequence", "NewMainSequence", "GetSettings", "NewSettings", "GetLeader", "NewLeader", "SetUsername", "GetClients"}[c]
+    switch c {
+    case GetIndex:
+        return "GetIndex"
+    case NewIndex:
+        return "NewIndex"
+    case GetBeat:
+        return "GetBeat"
+    case NewBeat:
+        return "NewBeat"
+    case GetMainSequence:
+        return "GetMainSequence"
+    case NewMainSequence:
+        return "NewMainSequence"
+    case GetSettings:
+        return "GetSettings"
+    case NewSettings:
+        return "NewSettings"
+    case GetLeader:
+        return "GetLeader"
+    case NewLeader:
+        return "NewLeader"
+    case SetUsername:
+        return "SetUsername"
+    case GetClients:
+        return "GetClients"
+    case GetTimeSignature:
+        return "GetTimeSignature"
+    case NewTimeSignature:
+        return "NewTimeSignature"
+    default:
+        return ""
+    }
 }
 
 type MidiEvent struct {
@@ -56,11 +89,28 @@ type Chord struct {
     MidiValues  []uint8
 }
 
+type TimeSignature struct {
+    Upper uint8 `json:"upper"`
+    Lower uint8 `json:"lower"`
+}
+
+func (t TimeSignature) isValid() bool {
+    return t.Upper > 0 && t.Lower > 0
+}
+
 func (c Chord) MarshalJSON() ([]byte, error) {
     return json.Marshal(c.ChordSymbol)
 }
 
-type ControlPayload interface{}
+type ControlPayload struct {
+    Index int `json:"index"`
+    Beat  int `json:"beat"`
+    Chords []Chord `json:"chords"`
+    TimeSignature TimeSignature `json:"timeSignature"`
+    LeaderId string `json:"leaderId"`
+    Username string `json:"username"`
+    Clients []*ClientData `json:"clients"`
+}
 
 type ControlEvent struct {
     Type    ControlEventType

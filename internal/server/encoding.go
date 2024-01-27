@@ -48,10 +48,6 @@ func unmarshalControlEvent(buffer []byte) (*ControlEvent, error) {
         return nil, fmt.Errorf("unmarshal error: %v", err)
     }
 
-	if num, ok := payload.(float64); ok {
-		return &ControlEvent{Type: eventType, Payload: int(num)}, nil
-	}
-
     return &ControlEvent{Type: eventType, Payload: payload}, nil
 }
 
