@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/harmony-cloud-live/server/internal/data"
 	"nhooyr.io/websocket"
 )
 
@@ -27,13 +28,15 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 	case GetBeat:
 		return h.marshalAndSend(ctx, c, NewBeat, ControlPayload{Beat: h.currentBeat})
 	case GetMainSequence:
-		return h.marshalAndSend(ctx, c, NewMainSequence, ControlPayload{Chords: h.mainSequence})
+		return h.marshalAndSend(ctx, c, NewMainSequence, ControlPayload{Chords: *h.mainSequence})
 	case GetClients:
 		return h.marshalAndSend(ctx, c, GetClients, ControlPayload{Clients: h.getClients()})
 	case GetLeader:
-		return h.marshalAndSend(ctx, c, GetLeader, ControlPayload{LeaderId: h.getLeader()})
+		return h.marshalAndSend(ctx, c, NewLeader, ControlPayload{LeaderId: h.getLeader()})
 	case GetTimeSignature:
 		return h.marshalAndSend(ctx, c, NewTimeSignature, ControlPayload{TimeSignature: h.timeSignature})
+	case GetLoop:
+		return h.marshalAndSend(ctx, c, NewLoop, ControlPayload{LoopStart: h.loopStart, LoopEnd: h.loopEnd})
 	case SetUsername:
 		username := evt.Payload.Username
 		if username != "" {
@@ -52,15 +55,12 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			return fmt.Errorf("only leader can set index")
 		}
 		newIndex := evt.Payload.Index
-		if newIndex >= 0 && newIndex < len(h.mainSequence) {
+		if newIndex >= 0 && newIndex < len(*h.mainSequence) {
 			h.currentIndex = newIndex
 			err := h.marshalAndBroadcast(ctx, userId, NewIndex, ControlPayload{Index: h.currentIndex})
 			if err != nil {
 				return err
 			}
-			chord := h.mainSequence[h.currentIndex]
-			h.oscClient.SendNotes(chord.MidiValues)
-			h.oscClient.SendChordSymbol(chord.ChordSymbol)
 		} else {
 			return fmt.Errorf("invalid index")
 		}
@@ -76,7 +76,8 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			return fmt.Errorf("invalid beat")
 		}
 	case NewMainSequence:
-		return h.newMainSequence(ctx)
+		fmt.Println("new main sequence", evt.Payload.SongName)
+		return h.newMainSequence(ctx, evt.Payload.SongName)
 	case NewTimeSignature:
 		if h.leader != h.clients[userId] {
 			return fmt.Errorf("only leader can set time signature")
@@ -98,16 +99,36 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		} else {
 			return fmt.Errorf("invalid leaderId")
 		}
+	case NewLoop:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("only leader can set loop")
+		}
+		newLoopStart := evt.Payload.LoopStart
+		newLoopEnd := evt.Payload.LoopEnd
+		if newLoopStart >= 0 && newLoopEnd >= 0 && newLoopStart < newLoopEnd && newLoopEnd < len(*h.mainSequence) {
+			h.loopStart = newLoopStart
+			h.loopEnd = newLoopEnd
+			return h.marshalAndBroadcast(ctx, userId, NewLoop, ControlPayload{LoopStart: h.loopStart, LoopEnd: h.loopEnd})
+		} else {
+			h.loopStart = -1
+			h.loopEnd = -1
+			return h.marshalAndBroadcast(ctx, userId, NewLoop, ControlPayload{LoopStart: h.loopStart, LoopEnd: h.loopEnd})
+		}
 	}
 	return err
 }
 
-func (h *HarmonyCloudServer) newMainSequence(ctx context.Context) error {
-    h.currentIndex = 0
-    h.currentBeat = 0
-    h.mainSequence = getDummyData()
+func (h *HarmonyCloudServer) newMainSequence(ctx context.Context, songName string) error {
+	startingChord := data.Chord{}
+	if h.currentIndex != 0 {
+		startingChord = (*h.mainSequence)[h.currentIndex]
+	} 
 
-	err := h.marshalAndBroadcast(ctx, "", NewMainSequence, ControlPayload{Chords: h.mainSequence})
+	h.mainSequence = h.apiClient.GenerateMusicWithFallback(songName, startingChord, 400)
+	h.currentIndex = 0
+    h.currentBeat = 0
+
+	err := h.marshalAndBroadcast(ctx, "", NewMainSequence, ControlPayload{Chords: *h.mainSequence})
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -56,7 +55,7 @@ func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Reques
 	for {
 		err = handler(r.Context(), c, userId)
 		if err != nil {
-			fmt.Println("socket error", err)
+			h.logf("socket error: %v", err)
 			if close != nil {
 				close(r.Context(), userId)
 			}

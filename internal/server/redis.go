@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/harmony-cloud-live/server/internal/data"
 )
 
 
@@ -29,7 +31,7 @@ func (h *HarmonyCloudServer) getCachedLeaderId(ctx context.Context) string {
 func (h *HarmonyCloudServer) cacheMainSequence(ctx context.Context) {
     var chordSymbols []string
     var midiValues [][]uint8
-    for _, chord := range h.mainSequence {
+    for _, chord := range *h.mainSequence {
         chordSymbols = append(chordSymbols, chord.ChordSymbol)
         midiValues = append(midiValues, chord.MidiValues)
     }
@@ -47,6 +49,8 @@ func (h *HarmonyCloudServer) cacheMainSequence(ctx context.Context) {
     }
     
     pipe := h.rdb.TxPipeline()
+    pipe.Set(ctx, "mainSequenceSongName", h.songName, 0)
+    pipe.Set(ctx, "mainSequenceKey", string(h.key), 0)
     pipe.Set(ctx, "mainSequenceChordSymbols", encChordSymbols, 0)
     pipe.Set(ctx, "mainSequenceMidiValues", encMidiValues, 0)
 
@@ -56,14 +60,16 @@ func (h *HarmonyCloudServer) cacheMainSequence(ctx context.Context) {
     }
 }
 
-func (h *HarmonyCloudServer) getCachedMainSequence(ctx context.Context) []Chord {
-    var mainSequence []Chord
+func (h *HarmonyCloudServer) getCachedMainSequence(ctx context.Context) *[]data.Chord {
+    var mainSequence []data.Chord
     var chordSymbols []string
     var midiValues [][]uint8
 
     pipe := h.rdb.TxPipeline()
     encChordSymbols := pipe.Get(ctx, "mainSequenceChordSymbols")
     encMidiValues := pipe.Get(ctx, "mainSequenceMidiValues")
+    songName := pipe.Get(ctx, "mainSequenceSongName")
+    key := pipe.Get(ctx, "mainSequenceKey")
 
     _, err := pipe.Exec(ctx)
     if err != nil {
@@ -83,7 +89,17 @@ func (h *HarmonyCloudServer) getCachedMainSequence(ctx context.Context) []Chord 
     }
 
     for i, symbol := range chordSymbols {
-        mainSequence  = append(mainSequence, Chord{ChordSymbol: symbol, MidiValues: midiValues[i]})
+        mainSequence  = append(mainSequence, data.Chord{ChordSymbol: symbol, MidiValues: midiValues[i]})
     }
-    return mainSequence
+
+    if songName.Val() == "" || key.Val() == "" {
+        return nil
+    }
+    
+    h.songName = songName.Val()
+    h.key = data.KeySignature(key.Val())
+    
+    h.logf("loaded mainSequence from cache: %v in %v", h.songName, h.key)
+
+    return &mainSequence
 }

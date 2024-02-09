@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 
+	"github.com/harmony-cloud-live/server/internal/data"
 	"nhooyr.io/websocket"
 )
 
@@ -42,6 +43,8 @@ const (
     GetClients                       // 11
     GetTimeSignature                 // 12
     NewTimeSignature                 // 13
+    GetLoop                          // 14
+    NewLoop                          // 15
 )
 
 func (c ControlEventType) String() string {
@@ -74,6 +77,10 @@ func (c ControlEventType) String() string {
         return "GetTimeSignature"
     case NewTimeSignature:
         return "NewTimeSignature"
+    case GetLoop:
+        return "GetLoop"
+    case NewLoop:
+        return "NewLoop"
     default:
         return ""
     }
@@ -105,11 +112,14 @@ func (c Chord) MarshalJSON() ([]byte, error) {
 type ControlPayload struct {
     Index int `json:"index"`
     Beat  int `json:"beat"`
-    Chords []Chord `json:"chords"`
+    Chords []data.Chord `json:"chords"`
     TimeSignature TimeSignature `json:"timeSignature"`
     LeaderId string `json:"leaderId"`
     Username string `json:"username"`
     Clients []*ClientData `json:"clients"`
+    SongName string `json:"songName"`
+    LoopStart int `json:"loopStart"`
+    LoopEnd int `json:"loopEnd"`
 }
 
 type ControlEvent struct {

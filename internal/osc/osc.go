@@ -1,6 +1,11 @@
 package osc
 
-import "github.com/hypebeast/go-osc/osc"
+import (
+	"strconv"
+	"strings"
+
+	"github.com/hypebeast/go-osc/osc"
+)
 
 type OscClient struct {
 	client *osc.Client
@@ -14,11 +19,16 @@ func NewOscClient(ip string, port int) *OscClient {
 }
 
 func (o *OscClient) SendNotes(notes []uint8) {
-	for _, note := range notes {
-		msg := osc.NewMessage("/notes")
-		msg.Append(int32(note))
-		o.client.Send(msg)
+	var builder strings.Builder
+	for i, note := range notes {
+		if i > 0 {
+			builder.WriteByte(',')
+		}
+		builder.WriteString(strconv.Itoa(int(note)))
 	}
+
+	msg := osc.NewMessage("/notes", builder.String())
+	o.client.Send(msg)
 }
 
 func (o *OscClient) SendChordSymbol(chord string) {
