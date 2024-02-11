@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/harmony-cloud-live/server/internal/data"
 	"github.com/harmony-cloud-live/server/internal/midi"
+	"github.com/harmony-cloud-live/server/internal/music"
 	"github.com/harmony-cloud-live/server/internal/osc"
 	"github.com/redis/go-redis/v9"
 )
@@ -20,23 +20,17 @@ type HarmonyCloudServer struct {
 	midiPlayer *midi.MidiPlayer
 	oscClient *osc.OscClient
 	rdb *redis.Client
-	apiClient *data.ApiClient
+	apiClient *music.ApiClient
 
 	clients map[string]*Client
 	leader *Client
 	cachedLeaderId string
 	
-	mainSequence *[]data.Chord
-	currentIndex int
-	currentBeat int
-	timeSignature TimeSignature
-	songName string
-	key data.KeySignature
-	loopStart int
-	loopEnd int
+	state *music.PlaybackState
 }
 
-func NewHarmonyCloudServer(midiPlayer *midi.MidiPlayer, oscClient *osc.OscClient, rdb *redis.Client, apiClient *data.ApiClient) *HarmonyCloudServer {
+func NewHarmonyCloudServer(midiPlayer *midi.MidiPlayer, oscClient *osc.OscClient, 
+	rdb *redis.Client, apiClient *music.ApiClient) (*HarmonyCloudServer, error) {
 	ctx := context.Background()
 
 	h := &HarmonyCloudServer{
@@ -47,24 +41,22 @@ func NewHarmonyCloudServer(midiPlayer *midi.MidiPlayer, oscClient *osc.OscClient
 
 		logf: log.Printf,
 		clients: make(map[string]*Client),
-
-		currentIndex: 0,
-		currentBeat: 0,
-		timeSignature: TimeSignature{Upper: 4, Lower: 4},
-		key: data.KeySignature("F"),
-		loopStart: -1,
-		loopEnd: -1,
 	}
+
 	h.serveMux.HandleFunc("/midi", h.upgradeMidiSocket)
 	h.serveMux.HandleFunc("/control", h.upgradeControlSocket)
 
 	h.cachedLeaderId = h.getCachedLeaderId(ctx)
-	h.mainSequence = h.getCachedMainSequence(ctx)
+	state, err := h.getCachedPlaybackState(ctx)
 
-	if h.mainSequence == nil || len(*h.mainSequence) == 0 {
+	if err != nil {
+		h.logf("could not get cached playback state: %v", err)
+		h.state = music.NewPlaybackState()
 		h.newMainSequence(ctx, "Legacy Dances Solo 2")
+	} else {
+		h.state = state
 	}
-	return h
+	return h, nil
 }
 
 func (h *HarmonyCloudServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

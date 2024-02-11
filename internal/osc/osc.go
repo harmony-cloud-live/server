@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -29,11 +30,14 @@ func (o *OscClient) SendNotes(notes []uint8) {
 
 	msg := osc.NewMessage("/notes", builder.String())
 	o.client.Send(msg)
+	fmt.Println("sent notes", builder.String())
 }
 
 func (o *OscClient) SendChordSymbol(chord string) {
 	msg := osc.NewMessage("/chord", chord)
 	o.client.Send(msg)
+
+	fmt.Println("sent chord", chord)
 }
 
 func (o *OscClient) SendRelease() {

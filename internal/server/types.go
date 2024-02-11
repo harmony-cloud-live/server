@@ -3,19 +3,14 @@ package server
 import (
 	"encoding/json"
 
-	"github.com/harmony-cloud-live/server/internal/data"
-	"nhooyr.io/websocket"
+	"github.com/harmony-cloud-live/server/internal/music"
+	ws "nhooyr.io/websocket"
 )
 
 type Client struct {
-	Conn *websocket.Conn
-	UserId string
-	Username string
-}
-
-type ClientData struct {
-	UserId string `json:"userId"`
-	Username string `json:"username"`
+	Conn       *ws.Conn `json:"-"` 
+	UserId     string   `json:"userId"`
+	Username   string   `json:"username"`
 }
 
 type MidiEventType byte
@@ -45,6 +40,10 @@ const (
     NewTimeSignature                 // 13
     GetLoop                          // 14
     NewLoop                          // 15
+    GetNoteDelay                     // 16
+    SetNoteDelay                     // 17
+    GetVelocity                      // 18
+    SetVelocity                      // 19
 )
 
 func (c ControlEventType) String() string {
@@ -96,15 +95,6 @@ type Chord struct {
     MidiValues  []uint8
 }
 
-type TimeSignature struct {
-    Upper uint8 `json:"upper"`
-    Lower uint8 `json:"lower"`
-}
-
-func (t TimeSignature) isValid() bool {
-    return t.Upper > 0 && t.Lower > 0
-}
-
 func (c Chord) MarshalJSON() ([]byte, error) {
     return json.Marshal(c.ChordSymbol)
 }
@@ -112,12 +102,12 @@ func (c Chord) MarshalJSON() ([]byte, error) {
 type ControlPayload struct {
     Index int `json:"index"`
     Beat  int `json:"beat"`
-    Chords []data.Chord `json:"chords"`
-    TimeSignature TimeSignature `json:"timeSignature"`
+    Chords []music.Chord `json:"chords"`
+    TimeSignature music.TimeSignature `json:"timeSignature"`
     LeaderId string `json:"leaderId"`
     Username string `json:"username"`
-    Clients []*ClientData `json:"clients"`
-    SongName string `json:"songName"`
+    Clients []*Client `json:"clients"`
+    SongTitle string `json:"songTitle"`
     LoopStart int `json:"loopStart"`
     LoopEnd int `json:"loopEnd"`
 }

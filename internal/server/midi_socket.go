@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	"nhooyr.io/websocket"
 )
@@ -23,21 +22,19 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 	
 	switch evt.Type {
 	case ChordDown:
-		if evt.Index < 0 || evt.Index >= len(*h.mainSequence) {
-			return fmt.Errorf("invalid index")
-		}
-		chord := (*h.mainSequence)[evt.Index]
-		h.midiPlayer.PlayChord(chord.MidiValues)
-		h.oscClient.SendNotes(chord.MidiValues)
+		chord, err := h.state.GetChord(evt.Index)
 		if err != nil {
 			return err
 		}
+		h.midiPlayer.PlayChord(chord.MidiValues)
+		h.oscClient.SendNotes(chord.MidiValues)
 		h.oscClient.SendChordSymbol(chord.ChordSymbolInC)
 	case ChordUp:
-		if evt.Index < 0 || evt.Index >= len(*h.mainSequence) {
-			return fmt.Errorf("invalid index")
+		chord, err := h.state.GetChord(evt.Index)
+		if err != nil {
+			return err
 		}
-		h.midiPlayer.StopChord((*h.mainSequence)[evt.Index].MidiValues)
+		h.midiPlayer.StopChord(chord.MidiValues)
 		h.oscClient.SendRelease()
 	case StopAll:
 		h.midiPlayer.StopAll()

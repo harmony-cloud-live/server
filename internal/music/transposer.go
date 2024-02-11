@@ -1,4 +1,4 @@
-package data
+package music
 
 import (
 	"encoding/csv"
@@ -9,31 +9,6 @@ import (
 	"github.com/agnivade/levenshtein"
 )
 
-type KeySignature string
-
-const (
-	C  KeySignature = "C"
-	Db KeySignature = "Db"
-	D  KeySignature = "D"
-	Eb KeySignature = "Eb"
-	E  KeySignature = "E"
-	F  KeySignature = "F"
-	Gb KeySignature = "Gb"
-	G  KeySignature = "G"
-	Ab KeySignature = "Ab"
-	A  KeySignature = "A"
-	Bb KeySignature = "Bb"
-	B  KeySignature = "B"
-)
-
-func isValidKeySignature(key KeySignature) bool {
-	switch key {
-	case C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B:
-		return true
-	default:
-		return false
-	}
-}
 
 var sharps = map[string]string{
 	"C#": "Db",
@@ -82,15 +57,15 @@ func getEnharmonic(chord string) string {
 	return ""
 }
 
-type SymbolMap map[string]string
+type SymbolsInC map[string]string
 
 type Transposer struct {
-	keyToSymbolMap map[KeySignature]SymbolMap
+	keyToSymbolsInC map[KeySignature]SymbolsInC 
 }
 
 func NewTransposer(source string) (*Transposer, error) {
 	t := Transposer{
-		keyToSymbolMap: make(map[KeySignature]SymbolMap),
+		keyToSymbolsInC: make(map[KeySignature]SymbolsInC),
 	}
 
 	file, err := os.Open(source)
@@ -105,19 +80,19 @@ func NewTransposer(source string) (*Transposer, error) {
 		return nil, fmt.Errorf("failed to read transpositions: %v", err)
 	}
 	
-	indexToKey := make(map[int]KeySignature)
-	for i, key := range records[0] {
-		ks := KeySignature(key)
-		if !isValidKeySignature(ks) {
-			return nil, fmt.Errorf("invalid key found in CSV: %s", key)
+	keys := make([]KeySignature, len(records[0]))
+	for i, tonic := range records[0] {
+		key := KeySignature(tonic)
+		if !key.isValid() {
+			return nil, fmt.Errorf("invalid tonic found in CSV: %s", tonic)
 		}
-		t.keyToSymbolMap[ks] = make(SymbolMap)
-		indexToKey[i] = ks
+		t.keyToSymbolsInC[key] = make(SymbolsInC)
+		keys[i] = key
 	}
 	
 	for _, record := range records {
 		for i, symbol := range record {
-			t.keyToSymbolMap[indexToKey[i]][symbol] = record[0]
+			t.keyToSymbolsInC[keys[i]][symbol] = record[0]
 		}
 	}
 	
@@ -125,7 +100,7 @@ func NewTransposer(source string) (*Transposer, error) {
 }
 
 func (t *Transposer) PopulateTranspositions(progression *[]Chord, key KeySignature) error {
-	if !isValidKeySignature(key) {
+	if !key.isValid() {
 		return fmt.Errorf("invalid key: %s", key)
 	}
 
@@ -140,21 +115,21 @@ func (t *Transposer) PopulateTranspositions(progression *[]Chord, key KeySignatu
 		}
 		(*progression)[i].ChordSymbolInC = transposed
 	}
-	fmt.Printf("Populated %d transpositions\n", len(*progression))
+	fmt.Printf("populated %d transpositions\n", len(*progression))
 	return nil
 }
 
 func (t *Transposer) toC(chord string, key KeySignature) (string, error) {
-	symbolMap, ok := t.keyToSymbolMap[key]
+	symbolsInC, ok := t.keyToSymbolsInC[key]
 	if !ok {
 		return "", fmt.Errorf("invalid key: %s", key)
 	}
 
-	transposedChord, ok := symbolMap[chord]
+	transposedChord, ok := symbolsInC[chord]
 	if !ok {
 		fmt.Println("Chord", chord, "not found in key", key, "attempting to find nearest chord")
 		nearest := t.nearestSymbol(chord, key)
-		transposedChord, ok = symbolMap[nearest]
+		transposedChord, ok = symbolsInC[nearest]
 		if !ok {
 			return "", fmt.Errorf("nearest chord %s not found in key %s", chord, key)
 		}
@@ -167,7 +142,7 @@ func (t *Transposer) nearestSymbol(chord string, key KeySignature) string {
 	enharmonic := getEnharmonic(chord)
 	minDistance := math.MaxInt
 	minChord := ""
-	for symbol := range t.keyToSymbolMap[key] {
+	for symbol := range t.keyToSymbolsInC[key] {
 		distance := levenshtein.ComputeDistance(symbol, chord)
 		if distance < minDistance {
 			minDistance = distance

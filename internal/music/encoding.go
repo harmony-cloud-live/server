@@ -1,4 +1,4 @@
-package data
+package music
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 
 type RequestBody struct {
 	Input   string `json:"input"`
-	Length  int `json:"length"`
+	Length  int    `json:"length"`
 }
 
 type ResponseBody struct {

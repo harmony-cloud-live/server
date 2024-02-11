@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
-	"github.com/harmony-cloud-live/server/internal/data"
+	"github.com/harmony-cloud-live/server/internal/music"
 )
 
 
@@ -23,83 +24,110 @@ func (h *HarmonyCloudServer) cacheLeaderId(ctx context.Context) {
 func (h *HarmonyCloudServer) getCachedLeaderId(ctx context.Context) string {
 	leaderId, err := h.rdb.Get(ctx, "leaderId").Result()
 	if err != nil {
+        h.logf("error getting cached leaderId: %v", err)
 		return ""
 	}
 	return leaderId
 }
 
-func (h *HarmonyCloudServer) cacheMainSequence(ctx context.Context) {
+func (h *HarmonyCloudServer) cachePlaybackState(ctx context.Context, state *music.PlaybackState) error {
+    chords := state.GetChords()
+    keySignature := state.GetKeySignature()
+    songTitle := state.GetSongTitle()
+
     var chordSymbols []string
+    var chordSymbolsInC []string
     var midiValues [][]uint8
-    for _, chord := range *h.mainSequence {
+    for _, chord := range chords {
         chordSymbols = append(chordSymbols, chord.ChordSymbol)
+        chordSymbolsInC = append(chordSymbolsInC, chord.ChordSymbolInC)
         midiValues = append(midiValues, chord.MidiValues)
     }
 
     encChordSymbols, err := json.Marshal(chordSymbols)
     if err != nil {
-        h.logf("error marshalling chordSymbols: %v", err)
-        return
+        return fmt.Errorf("error marshalling chordSymbols: %v", err)
+    }
+
+    encChordSymbolsInC, err := json.Marshal(chordSymbolsInC)
+    if err != nil {
+        return fmt.Errorf("error marshalling chordSymbolsInC: %v", err)
     }
 
     encMidiValues, err := json.Marshal(midiValues)
     if err != nil {
-        h.logf("error marshalling midiValues: %v", err)
-        return
+        return fmt.Errorf("error marshalling midiValues: %v", err)
     }
     
     pipe := h.rdb.TxPipeline()
-    pipe.Set(ctx, "mainSequenceSongName", h.songName, 0)
-    pipe.Set(ctx, "mainSequenceKey", string(h.key), 0)
+    pipe.Set(ctx, "mainSequenceSongTitle", songTitle, 0)
+    pipe.Set(ctx, "mainSequenceKeySignature", keySignature, 0)
     pipe.Set(ctx, "mainSequenceChordSymbols", encChordSymbols, 0)
+    pipe.Set(ctx, "mainSequenceChordSymbolsInC", encChordSymbolsInC, 0)
     pipe.Set(ctx, "mainSequenceMidiValues", encMidiValues, 0)
 
     _, err = pipe.Exec(ctx)
     if err != nil {
-        h.logf("error caching mainSequence: %v", err)
+        return fmt.Errorf("error caching playbackState: %v", err)
     }
+    return nil
 }
 
-func (h *HarmonyCloudServer) getCachedMainSequence(ctx context.Context) *[]data.Chord {
-    var mainSequence []data.Chord
+func (h *HarmonyCloudServer) getCachedPlaybackState(ctx context.Context) (*music.PlaybackState, error) {
     var chordSymbols []string
+    var chordSymbolsInC []string
     var midiValues [][]uint8
 
     pipe := h.rdb.TxPipeline()
-    encChordSymbols := pipe.Get(ctx, "mainSequenceChordSymbols")
-    encMidiValues := pipe.Get(ctx, "mainSequenceMidiValues")
-    songName := pipe.Get(ctx, "mainSequenceSongName")
-    key := pipe.Get(ctx, "mainSequenceKey")
+    cachedSongTitle := pipe.Get(ctx, "mainSequenceSongTitle")
+    cachedKeySignature := pipe.Get(ctx, "mainSequenceKeySignature")
+    cachedChordSymbols := pipe.Get(ctx, "mainSequenceChordSymbols")
+    cachedChordSymbolsInC := pipe.Get(ctx, "mainSequenceChordSymbolsInC")
+    cachedMidiValues := pipe.Get(ctx, "mainSequenceMidiValues")
 
     _, err := pipe.Exec(ctx)
     if err != nil {
-        return nil
+        return nil, err
     }
 
-    err = json.Unmarshal([]byte(encChordSymbols.Val()), &chordSymbols)
+    songTitle := cachedSongTitle.Val()
+    keySignature := music.KeySignature(cachedKeySignature.Val())
+
+    err = json.Unmarshal([]byte(cachedChordSymbols.Val()), &chordSymbols)
     if err != nil {
-        h.logf("error unmarshalling chordSymbols: %v", err)
-        return nil
+        return nil, fmt.Errorf("error unmarshalling chordSymbols: %v", err)
     }
 
-    err = json.Unmarshal([]byte(encMidiValues.Val()), &midiValues)
+    err = json.Unmarshal([]byte(cachedChordSymbolsInC.Val()), &chordSymbolsInC)
     if err != nil {
-        h.logf("error unmarshalling midiValues: %v", err)
-        return nil
+        return nil, fmt.Errorf("error unmarshalling chordSymbolsInC: %v", err)
     }
 
+    err = json.Unmarshal([]byte(cachedMidiValues.Val()), &midiValues)
+    if err != nil {
+        return nil, fmt.Errorf("error unmarshalling midiValues: %v", err)
+    }
+
+    var chords []music.Chord
     for i, symbol := range chordSymbols {
-        mainSequence  = append(mainSequence, data.Chord{ChordSymbol: symbol, MidiValues: midiValues[i]})
-    }
-
-    if songName.Val() == "" || key.Val() == "" {
-        return nil
+        chords = append(chords, music.Chord{
+            ChordSymbol: symbol, 
+            ChordSymbolInC: chordSymbolsInC[i], 
+            MidiValues: midiValues[i],
+        })
     }
     
-    h.songName = songName.Val()
-    h.key = data.KeySignature(key.Val())
-    
-    h.logf("loaded mainSequence from cache: %v in %v", h.songName, h.key)
+    state := music.NewPlaybackState()
+    err = state.SetMainSequence(&music.ChordProgression{
+        Title: songTitle,
+        Chords: chords,
+        Key: keySignature,
+    })
 
-    return &mainSequence
+    if err != nil {
+        return nil, err
+    }
+
+    h.logf("loaded playbackState from cache: %v", state)
+    return state, nil
 }
