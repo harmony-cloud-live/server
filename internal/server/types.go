@@ -80,6 +80,14 @@ func (c ControlEventType) String() string {
         return "GetLoop"
     case NewLoop:
         return "NewLoop"
+    case GetNoteDelay:
+        return "GetNoteDelay"
+    case SetNoteDelay:
+        return "SetNoteDelay"
+    case GetVelocity:
+        return "GetVelocity"
+    case SetVelocity:
+        return "SetVelocity"
     default:
         return ""
     }
@@ -110,6 +118,8 @@ type ControlPayload struct {
     SongTitle string `json:"songTitle"`
     LoopStart int `json:"loopStart"`
     LoopEnd int `json:"loopEnd"`
+    NoteDelay int64 `json:"noteDelay"`
+    Velocity uint8 `json:"velocity"`
 }
 
 type ControlEvent struct {

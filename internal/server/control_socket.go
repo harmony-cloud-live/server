@@ -41,6 +41,10 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 	case GetLoop:
 		loopStart, loopEnd := h.state.GetLoop()
 		return h.marshalAndSend(ctx, c, NewLoop, ControlPayload{LoopStart: loopStart, LoopEnd: loopEnd})
+	case GetNoteDelay:
+		return h.marshalAndSend(ctx, c, GetNoteDelay, ControlPayload{NoteDelay: h.midiPlayer.GetNoteDelay()})
+	case GetVelocity:
+		return h.marshalAndSend(ctx, c, GetVelocity, ControlPayload{Velocity: h.midiPlayer.GetVelocity()})
 	case SetUsername:
 		username := evt.Payload.Username
 		if username != "" {
@@ -102,6 +106,18 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			h.state.ClearLoop()
 		} 
 		return h.marshalAndBroadcast(ctx, userId, NewLoop, ControlPayload{LoopStart: start, LoopEnd: end})
+	case SetNoteDelay:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("only leader can set note delay")
+		}
+		noteDelay := h.midiPlayer.SetNoteDelay(evt.Payload.NoteDelay)
+		return h.marshalAndBroadcast(ctx, userId, GetNoteDelay, ControlPayload{NoteDelay: noteDelay})
+	case SetVelocity:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("only leader can set velocity")
+		}
+		velocity := h.midiPlayer.SetVelocity(evt.Payload.Velocity)
+		return h.marshalAndBroadcast(ctx, userId, GetVelocity, ControlPayload{Velocity: velocity})
 	}
 	return err
 }
