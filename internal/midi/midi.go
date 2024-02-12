@@ -71,15 +71,13 @@ func (m *MidiPlayer) PlayChord(chord []uint8) {
 }
 
 func (m *MidiPlayer) StopChord(chord []uint8) {
-	time.Sleep(time.Millisecond * time.Duration(m.noteDelay))
 	for _, note := range chord {
 		m.send(midi.NoteOff(0, note))
 	}
 }
 
 func (m *MidiPlayer) StopAll() {
-	time.Sleep(time.Millisecond * time.Duration(m.noteDelay))
-	for i := m.minNote; i < m.maxNote; i++ {
+	for i := m.minNote; i <= m.maxNote; i++ {
 		m.send(midi.NoteOff(0, i))
 	}
 }
