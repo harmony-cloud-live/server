@@ -100,3 +100,22 @@ func unmarshalResponse(resp *http.Response) ([]Chord, error) {
 	
 	return chords, nil
 }
+
+func cleanChords(chords []Chord) ([]Chord, error) {
+	var result []Chord
+	for _, chord := range chords {
+		if !chord.isValid() {
+			return nil, fmt.Errorf("invalid chord: %v", chord)
+		}
+		seen := make(map[uint8]bool)
+		cleanedChord := Chord{ChordSymbol: chord.ChordSymbol}
+		for _, note := range chord.MidiValues {
+			if _, ok := seen[note]; !ok {
+				seen[note] = true
+				cleanedChord.MidiValues = append(cleanedChord.MidiValues, note)
+			}
+		}
+		result  = append(result, cleanedChord)
+	}
+	return result, nil
+}	

@@ -23,6 +23,8 @@ func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId stri
 	h.logf("closeControlSocket: %v", h.clients[userId])
 	delete(h.clients, userId)
 	if h.leader != nil && h.leader.UserId == userId {
+		// h.midiPlayer.StopAll()
+		// h.oscClient.SendRelease()
 		for _, c := range h.clients {
 			if c != nil {
 				err := h.setLeader(ctx, c)

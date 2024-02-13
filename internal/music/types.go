@@ -6,6 +6,10 @@ type Chord struct {
     MidiValues  []uint8
 }
 
+func (c Chord) isValid() bool {
+	return c.ChordSymbol != "" && c.ChordSymbolInC != "" && len(c.MidiValues) != 0
+}
+
 type KeySignature string
 
 const (

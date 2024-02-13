@@ -67,7 +67,7 @@ func (a *ApiClient) GenerateMusicWithFallback(songTitle string, startingChord Ch
 		a.logf("[WARNING] failed to generate music, falling back to cache: %v", err)
 		chordProgression, err = a.fallbackToCache(songTitle, startingChord)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fallback cache produced invalid chord progression: %v", err)
 		}
 	}
 
@@ -103,6 +103,11 @@ func (a *ApiClient) GenerateMusic(songTitle string, startingChord Chord, length 
 		return nil, err
 	}
 
+	chords, err = cleanChords(chords)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ChordProgression{
 		Title:  songTitle,
 		Chords: chords,
@@ -131,6 +136,11 @@ func (a *ApiClient) fallbackToCache(songTitle string, startingChord Chord) (*Cho
 	}
 
 	err := a.transposer.PopulateTranspositions(&chords, key)
+	if err != nil {
+		return nil, err
+	}
+	
+	chords, err = cleanChords(chords)
 	if err != nil {
 		return nil, err
 	}

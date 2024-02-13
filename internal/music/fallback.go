@@ -46,7 +46,7 @@ func (c *FallbackCache) GetProgressionByChord(chordSymbol string) []Chord {
 func loadFallbackData() (map[string]*FallbackCache, error) {
 	dirs, err := os.ReadDir("internal/data")
 	if err != nil {
-		return nil, fmt.Errorf("failed to list data dirs: %s", err)
+		return nil, fmt.Errorf("failed to list data dirs: %v", err)
 	}
 	
 	caches := make(map[string]*FallbackCache)

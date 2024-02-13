@@ -1,10 +1,11 @@
 package osc
 
 import (
-	"fmt"
+	// "fmt"
 	"strconv"
 	"strings"
 
+	"github.com/harmony-cloud-live/server/internal/music"
 	"github.com/hypebeast/go-osc/osc"
 )
 
@@ -19,7 +20,12 @@ func NewOscClient(ip string, port int) *OscClient {
 	}
 }
 
-func (o *OscClient) SendNotes(notes []uint8) {
+func (o *OscClient) SendChord(chord music.Chord) {
+	o.sendChordSymbol(chord.ChordSymbolInC)
+	o.sendNotes(chord.MidiValues)
+}
+
+func (o *OscClient) sendNotes(notes []uint8) {
 	var builder strings.Builder
 	for i, note := range notes {
 		if i > 0 {
@@ -30,14 +36,11 @@ func (o *OscClient) SendNotes(notes []uint8) {
 
 	msg := osc.NewMessage("/notes", builder.String())
 	o.client.Send(msg)
-	fmt.Println("sent notes", builder.String())
 }
 
-func (o *OscClient) SendChordSymbol(chord string) {
+func (o *OscClient) sendChordSymbol(chord string) {
 	msg := osc.NewMessage("/chord", chord)
 	o.client.Send(msg)
-
-	fmt.Println("sent chord", chord)
 }
 
 func (o *OscClient) SendRelease() {
