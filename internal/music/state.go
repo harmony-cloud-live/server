@@ -52,7 +52,7 @@ func (p *PlaybackState) GetChord(index int) (Chord, error) {
         return Chord{}, fmt.Errorf("invalid main sequence")
     }
     if !p.IsValidIndex(index) {
-        return Chord{}, fmt.Errorf("invalid index")
+        return Chord{}, fmt.Errorf("invalid index: %d", index)
     }
     return p.mainSequence.Chords[index], nil
 }
@@ -66,7 +66,7 @@ func (p *PlaybackState) SetIndex(index int) (int, error) {
         p.index = index
         return p.index, nil
     }
-    return 0, fmt.Errorf("invalid index")
+    return 0, fmt.Errorf("invalid index: %d", index)
 }
 
 func (p *PlaybackState) IsValidIndex(index int) bool {
@@ -85,7 +85,7 @@ func (p *PlaybackState) SetBeat(beat int) (int, error) {
         p.beat = beat
         return p.beat, nil
     }
-    return 0, fmt.Errorf("invalid beat: %v", beat)
+    return 0, fmt.Errorf("invalid beat: %d", beat)
 }
 
 func (p *PlaybackState) IsValidBeat(beat int) bool {

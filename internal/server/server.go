@@ -50,7 +50,7 @@ func NewHarmonyCloudServer(midiPlayer *midi.MidiPlayer, oscClient *osc.OscClient
 	state, err := h.getCachedPlaybackState(ctx)
 
 	if err != nil {
-		h.logf("could not get cached playback state: %v", err)
+		h.logf("[INFO] could not get cached playback state: %v", err)
 		h.state = music.NewPlaybackState()
 		h.newMainSequence(ctx, "Legacy Dances Solo 2")
 	} else {

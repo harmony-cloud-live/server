@@ -20,11 +20,9 @@ func (h *HarmonyCloudServer) upgradeControlSocket(w http.ResponseWriter, r *http
 }
 
 func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId string) error {
-	h.logf("closeControlSocket: %v", h.clients[userId])
+	h.logf("[INFO] closeControlSocket: %v", h.clients[userId])
 	delete(h.clients, userId)
 	if h.leader != nil && h.leader.UserId == userId {
-		// h.midiPlayer.StopAll()
-		// h.oscClient.SendRelease()
 		for _, c := range h.clients {
 			if c != nil {
 				err := h.setLeader(ctx, c)
@@ -41,7 +39,7 @@ func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId stri
 func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Request, handler eventHandler, close closeFunc) {
 	userId, err := getUserId(r)
 	if err != nil {
-		h.logf("error getting userId %v", err)
+		h.logf("[ERROR] getting userId %v", err)
 		return	
 
 	}
@@ -49,7 +47,7 @@ func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Reques
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
-		h.logf("upgradeSocket error: %v", err)
+		h.logf("[ERROR] upgradeSocket error: %v", err)
 		return	
 	}
 	defer c.CloseNow()
@@ -57,7 +55,7 @@ func (h *HarmonyCloudServer) upgradeSocket(w http.ResponseWriter, r *http.Reques
 	for {
 		err = handler(r.Context(), c, userId)
 		if err != nil {
-			h.logf("socket error: %v", err)
+			h.logf("[ERROR] socket exception: %v", err)
 			if close != nil {
 				close(r.Context(), userId)
 			}

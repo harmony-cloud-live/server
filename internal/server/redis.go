@@ -16,7 +16,7 @@ func (h *HarmonyCloudServer) cacheLeaderId(ctx context.Context) {
 	if h.leader != nil {
         err := h.rdb.Set(ctx, "leaderId", h.leader.UserId, 0).Err()
         if err != nil {
-            h.logf("error caching leaderId: %v", err)
+            h.logf("[ERROR] caching leaderId: %v", err)
         }
 	}
 }
@@ -24,7 +24,7 @@ func (h *HarmonyCloudServer) cacheLeaderId(ctx context.Context) {
 func (h *HarmonyCloudServer) getCachedLeaderId(ctx context.Context) string {
 	leaderId, err := h.rdb.Get(ctx, "leaderId").Result()
 	if err != nil {
-        h.logf("error getting cached leaderId: %v", err)
+        h.logf("[ERROR] getting cached leaderId: %v", err)
 		return ""
 	}
 	return leaderId
@@ -128,6 +128,6 @@ func (h *HarmonyCloudServer) getCachedPlaybackState(ctx context.Context) (*music
         return nil, err
     }
 
-    h.logf("loaded playbackState from cache: %v", state)
+    h.logf("[INFO] loaded playbackState from cache: %s", state.GetSongTitle())
     return state, nil
 }

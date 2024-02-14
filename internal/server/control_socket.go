@@ -56,20 +56,21 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 				return h.marshalAndBroadcast(ctx, userId, GetClients, ControlPayload{Clients: h.getClients()})
 			}
 		} else {
-			return fmt.Errorf("invalid username")
+			return fmt.Errorf("[ERROR] invalid username")
 		}
 	case NewIndex:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set index")
+			return fmt.Errorf("[ERROR] only leader can set index")
 		}
 		index, err := h.state.SetIndex(evt.Payload.Index)
 		if err != nil {
-			return err
+			h.logf("[ERROR] setting index: %v", err)
+			index, _ = h.state.SetIndex(0)
 		}
 		return h.marshalAndBroadcast(ctx, userId, NewIndex, ControlPayload{Index: index})
 	case NewBeat:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set beat")
+			return fmt.Errorf("[ERROR] only leader can set beat")
 		}
 		beat, err := h.state.SetBeat(evt.Payload.Beat)
 		if err != nil {
@@ -80,7 +81,7 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		return h.newMainSequence(ctx, evt.Payload.SongTitle)
 	case NewTimeSignature:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set time signature")
+			return fmt.Errorf("[ERROR] only leader can set time signature")
 		}
 		timeSignature, err := h.state.SetTimeSignature(evt.Payload.TimeSignature)
 		if err != nil {
@@ -91,15 +92,15 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		newLeaderId := evt.Payload.LeaderId
 		if newLeaderId != "" {
 			if h.clients[newLeaderId] == nil {
-				return fmt.Errorf("invalid user")
+				return fmt.Errorf("[ERROR] invalid user")
 			}
 			return h.setLeader(ctx, h.clients[newLeaderId])
 		} else {
-			return fmt.Errorf("invalid leaderId")
+			return fmt.Errorf("[ERROR] invalid leaderId")
 		}
 	case NewLoop:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set loop")
+			return fmt.Errorf("[ERROR] only leader can set loop")
 		}
 		start, end, err := h.state.SetLoop(evt.Payload.LoopStart, evt.Payload.LoopEnd)
 		if err != nil {
@@ -108,13 +109,13 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		return h.marshalAndBroadcast(ctx, userId, NewLoop, ControlPayload{LoopStart: start, LoopEnd: end})
 	case SetNoteDelay:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set note delay")
+			return fmt.Errorf("[ERROR] only leader can set note delay")
 		}
 		noteDelay := h.midiPlayer.SetNoteDelay(evt.Payload.NoteDelay)
 		return h.marshalAndBroadcast(ctx, userId, GetNoteDelay, ControlPayload{NoteDelay: noteDelay})
 	case SetVelocity:
 		if h.leader != h.clients[userId] {
-			return fmt.Errorf("only leader can set velocity")
+			return fmt.Errorf("[ERROR] only leader can set velocity")
 		}
 		velocity := h.midiPlayer.SetVelocity(evt.Payload.Velocity)
 		return h.marshalAndBroadcast(ctx, userId, GetVelocity, ControlPayload{Velocity: velocity})
@@ -153,7 +154,7 @@ func (h *HarmonyCloudServer) newMainSequence(ctx context.Context, songTitle stri
 
 	err = h.cachePlaybackState(ctx, h.state)
 	if err != nil {
-		h.logf("error caching playback state: %v", err)
+		h.logf("[ERROR] caching playback state: %v", err)
 	}
 	return nil
 }
@@ -188,11 +189,11 @@ func (h *HarmonyCloudServer) addClient(ctx context.Context, userId string, usern
 		Username: username,
 	}
 	if h.leader == nil && h.cachedLeaderId != "" && h.clients[h.cachedLeaderId] != nil {
-		h.logf("auto set leader from cache: %v", h.clients[h.cachedLeaderId])
+		h.logf("[INFO] auto set leader from cache: %v", h.clients[h.cachedLeaderId].Username)
 		return h.setLeader(ctx, h.clients[h.cachedLeaderId])
 	}
-	if h.leader != nil && h.leader.UserId == userId {
-		h.logf("reconnecting leader: %v", h.clients[userId])
+	if h.leader != nil && h.leader.UserId == userId && h.clients[userId] != nil {
+		h.logf("[INFO] reconnecting leader: %v", h.clients[userId].Username)
 		return h.setLeader(ctx, h.clients[userId])
 	}
 	return nil

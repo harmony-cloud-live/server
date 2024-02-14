@@ -115,7 +115,7 @@ func (t *Transposer) PopulateTranspositions(progression *[]Chord, key KeySignatu
 		}
 		(*progression)[i].ChordSymbolInC = transposed
 	}
-	fmt.Printf("populated %d transpositions\n", len(*progression))
+	fmt.Printf("[INFO] populated %d transpositions\n", len(*progression))
 	return nil
 }
 
