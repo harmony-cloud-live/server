@@ -65,40 +65,40 @@ func unmarshalResponse(resp *http.Response) ([]Chord, error) {
 	foundChords := false
 	
 	unescaped := strings.ReplaceAll(body.Message, "\\n", "\n")
-	fmt.Println(unescaped)
 	lines := bufio.NewScanner(strings.NewReader(unescaped))
 	
 	for lines.Scan() {
 		if !foundChords {
 			foundChords = strings.Contains(lines.Text(), "CHORDS") 
 		} else {
-			line := strings.Split(strings.TrimSpace(lines.Text()), ":")
-			if len(line) != 2 {
-				if strings.Contains(lines.Text(), "]") {
-					break
-				} else {
-					continue
-				}
+			line := strings.TrimSpace(lines.Text())
+			if strings.Contains(line, "]") {
+				break
 			}
-			chordSymbol := line[0]
-			notes := strings.Split(strings.TrimSpace(line[1]), " ")
+
+			chord, notes, found := strings.Cut(line, ": ")
+			if !found {
+				break
+			}
 
 			var midiValues []uint8
-			for _, note := range notes {
+			for _, note := range strings.Split(notes, " ") {
 				val, err := strconv.Atoi(note)
 				if err != nil {
-					if len(chords) < 10 {
-						return nil, fmt.Errorf("failed to convert note to int: %v", err)
-					}
+					return nil, fmt.Errorf("failed to convert note to int: %v", err)
 				}
 				midiValues = append(midiValues, uint8(val))
 			}
 
-			chords = append(chords, Chord{ChordSymbol: chordSymbol, MidiValues: midiValues})
+			chords = append(chords, Chord{ChordSymbol: chord, MidiValues: midiValues})
 		}
 	}
 	
-	return chords, nil
+	if len(chords) < 10 {
+		return nil, fmt.Errorf("failed to generate music: %s", body.Message)
+	}
+	
+	return chords[:len(chords)-1], nil
 }
 
 func cleanChords(chords []Chord) ([]Chord, error) {
