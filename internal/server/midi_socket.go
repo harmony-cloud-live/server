@@ -29,12 +29,13 @@ func (h *HarmonyCloudServer) handleMidiEvent(ctx context.Context, c *websocket.C
 		go h.oscClient.SendChord(chord)
 		h.midiPlayer.PlayChord(chord.MidiValues)
 	case ChordUp:
-		chord, err := h.state.GetChord(evt.Index)
-		if err != nil {
-			return err
-		}
-		h.midiPlayer.StopChord(chord.MidiValues)
-		h.oscClient.SendRelease()
+		// chord, err := h.state.GetChord(evt.Index)
+		// if err != nil {
+		// 	return err
+		// }
+		// h.midiPlayer.StopChord(chord.MidiValues)
+		// h.oscClient.SendRelease()
+		fallthrough
 	case StopAll:
 		h.midiPlayer.StopAll()
 		h.oscClient.SendRelease()
