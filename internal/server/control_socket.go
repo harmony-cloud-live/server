@@ -119,6 +119,26 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		}
 		velocity := h.midiPlayer.SetVelocity(evt.Payload.Velocity)
 		return h.marshalAndBroadcast(ctx, userId, GetVelocity, ControlPayload{Velocity: velocity})
+	case ManualChordDown:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("[ERROR] only leader can manually change chord")
+		}
+		if len(evt.Payload.Chords) != 1 {
+			return fmt.Errorf("[ERROR] manual chord down requires exactly one chord")
+		}
+		if evt.Payload.SongTitle == "" {
+			return fmt.Errorf("[ERROR] manual chord down requires a song title")
+		}
+		chord, err := h.apiClient.GetVoicing(evt.Payload.SongTitle, evt.Payload.Chords[0].ChordSymbol)
+		if err != nil {
+			return err
+		}
+		h.midiPlayer.PlayChord(chord)
+	case ManualChordUp:
+		if h.leader != h.clients[userId] {
+			return fmt.Errorf("[ERROR] only leader can manually change chord")
+		}
+		h.midiPlayer.StopAll()
 	}
 	return err
 }

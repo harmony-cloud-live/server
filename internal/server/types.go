@@ -44,6 +44,8 @@ const (
     SetNoteDelay                     // 17
     GetVelocity                      // 18
     SetVelocity                      // 19
+    ManualChordDown                  // 20
+    ManualChordUp                    // 21
 )
 
 func (c ControlEventType) String() string {
@@ -88,6 +90,10 @@ func (c ControlEventType) String() string {
         return "GetVelocity"
     case SetVelocity:
         return "SetVelocity"
+    case ManualChordDown:
+        return "ManualChordDown"
+    case ManualChordUp:
+        return "ManualChordUp"
     default:
         return ""
     }

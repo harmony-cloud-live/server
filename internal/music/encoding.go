@@ -101,21 +101,29 @@ func unmarshalResponse(resp *http.Response) ([]Chord, error) {
 	return chords[:len(chords)-1], nil
 }
 
-func cleanChords(chords []Chord) ([]Chord, error) {
+func CleanChords(chords []Chord) ([]Chord, error) {
 	var result []Chord
 	for _, chord := range chords {
 		if !chord.isValid() {
 			return nil, fmt.Errorf("invalid chord: %v", chord)
 		}
-		seen := make(map[uint8]bool)
-		cleanedChord := Chord{ChordSymbol: chord.ChordSymbol}
-		for _, note := range chord.MidiValues {
-			if _, ok := seen[note]; !ok {
-				seen[note] = true
-				cleanedChord.MidiValues = append(cleanedChord.MidiValues, note)
-			}
+		cleanedChord, err := cleanChord(&chord)
+		if err != nil {
+			return nil, err
 		}
-		result  = append(result, cleanedChord)
+		result = append(result, *cleanedChord)
 	}
 	return result, nil
 }	
+
+func cleanChord(chord *Chord) (*Chord, error) {
+	seen := make(map[uint8]bool)
+	cleanedChord := Chord{ChordSymbol: chord.ChordSymbol}
+	for _, note := range chord.MidiValues {
+		if _, ok := seen[note]; !ok {
+			seen[note] = true
+			cleanedChord.MidiValues = append(cleanedChord.MidiValues, note)
+		}
+	}
+	return &cleanedChord, nil
+}

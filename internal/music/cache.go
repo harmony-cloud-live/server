@@ -32,9 +32,10 @@ func (c *FallbackCache) GetProgressionByChord(chordSymbol string) []Chord {
 	if len(pointers) == 0 {
 		return c.GetProgression()
 	}
+
+	progression := c.progressions[pointers[0].ProgressionIndex][pointers[0].ChordIndex:]
 	copy(c.chordPointers[chordSymbol], c.chordPointers[chordSymbol][1:])
 	c.chordPointers[chordSymbol] = append(c.chordPointers[chordSymbol], pointers[0])
-	progression := c.progressions[pointers[0].ProgressionIndex][pointers[0].ChordIndex:]
 
 	if len(progression) < defaultLength {
 		return progression

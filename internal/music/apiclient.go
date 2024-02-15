@@ -103,7 +103,7 @@ func (a *ApiClient) GenerateMusic(songTitle string, startingChord Chord, length 
 		return nil, err
 	}
 
-	chords, err = cleanChords(chords)
+	chords, err = CleanChords(chords)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func (a *ApiClient) fallbackToCache(songTitle string, startingChord Chord) (*Cho
 		return nil, err
 	}
 	
-	chords, err = cleanChords(chords)
+	chords, err = CleanChords(chords)
 	if err != nil {
 		return nil, err
 	}
