@@ -38,7 +38,7 @@ func run() error {
 	}
 	defer midiPlayer.Close()
 	
-	oscClient := osc.NewOscClient("192.168.1.246", 7000)
+	oscClient := osc.NewOscClient("192.168.1.70", 7000)
 
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func (a *ApiClient) GetVoicing(songTitle string, chordSymbol string) ([]uint8, error) {
+func (a *ApiClient) BuildChord(songTitle string, chordSymbol string) (*Chord, error) {
 	if songTitle == "" {
 		return nil, fmt.Errorf("empty song name")
 	}
@@ -14,14 +14,21 @@ func (a *ApiClient) GetVoicing(songTitle string, chordSymbol string) ([]uint8, e
 		return nil, fmt.Errorf("song not found in cache: %s", songTitle)
 	}
 
-	chord, err := cache.GetChord(chordSymbol)
+	chord, err := cache.getCleanChord(chordSymbol)
 	if err != nil {
 		return nil, err
 	}
-	return chord.MidiValues, nil
-}
 
-func (c *FallbackCache) GetChord(chordSymbol string) (*Chord, error) {
+	chordSymbolInC, err := a.transposer.toC(chordSymbol, cache.key)
+	if err != nil {
+		return nil, err
+	}
+	chord.ChordSymbolInC = chordSymbolInC
+
+	return chord, nil
+} 
+
+func (c *FallbackCache) getCleanChord(chordSymbol string) (*Chord, error) {
 	pointers, ok := c.chordPointers[chordSymbol]
 	if !ok {
 		return nil, fmt.Errorf("chord not found: %s", chordSymbol)

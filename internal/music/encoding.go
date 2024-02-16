@@ -118,7 +118,7 @@ func CleanChords(chords []Chord) ([]Chord, error) {
 
 func cleanChord(chord *Chord) (*Chord, error) {
 	seen := make(map[uint8]bool)
-	cleanedChord := Chord{ChordSymbol: chord.ChordSymbol}
+	cleanedChord := Chord{ChordSymbol: chord.ChordSymbol, ChordSymbolInC: chord.ChordSymbolInC}
 	for _, note := range chord.MidiValues {
 		if _, ok := seen[note]; !ok {
 			seen[note] = true
