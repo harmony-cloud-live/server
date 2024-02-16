@@ -9,6 +9,8 @@ type PlaybackState struct {
 	beat int
 	loopStart int
 	loopEnd int
+    playbackMode string
+    manualModeIndex int
 }
 
 func NewPlaybackState() *PlaybackState {
@@ -19,6 +21,27 @@ func NewPlaybackState() *PlaybackState {
 		loopStart: -1,
 		loopEnd: -1,
 	}
+}
+
+func (p *PlaybackState) GetManualModeIndex() int {
+    return p.manualModeIndex
+}
+
+func (p *PlaybackState) SetManualModeIndex(index int) int {
+    p.manualModeIndex = index
+    return p.manualModeIndex
+}
+
+func (p *PlaybackState) GetPlaybackMode() string {
+    return p.playbackMode
+}
+
+func (p *PlaybackState) SetPlaybackMode(playbackMode string) (string, error) {
+    if playbackMode != "ai" && playbackMode != "manual" {
+        return "", fmt.Errorf("invalid playback mode")
+    }
+    p.playbackMode = playbackMode
+    return p.playbackMode, nil
 }
 
 func (p *PlaybackState) GetSongTitle() string {
