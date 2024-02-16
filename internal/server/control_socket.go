@@ -205,10 +205,18 @@ func (h *HarmonyCloudServer) getLeader() string {
 }
 
 func (h *HarmonyCloudServer) addClient(ctx context.Context, userId string, username string, c *websocket.Conn) error {
+	if h.leader != nil && h.leader.UserId == userId && username == "$listener$" {
+		h.logf("[INFO] leader cannot become listener")
+		return nil
+	}
 	h.clients[userId] = &Client{
 		Conn: c,
 		UserId: userId,
 		Username: username,
+	}
+	if username == "$listener$" {
+		h.logf("[INFO] listener connected")
+		return nil
 	}
 	if h.leader == nil && h.cachedLeaderId != "" && h.clients[h.cachedLeaderId] != nil {
 		h.logf("[INFO] auto set leader from cache: %v", h.clients[h.cachedLeaderId].Username)
@@ -224,7 +232,9 @@ func (h *HarmonyCloudServer) addClient(ctx context.Context, userId string, usern
 func (h *HarmonyCloudServer) getClients() []*Client {
 	var clients []*Client
 	for _, c := range h.clients {
-		clients = append(clients, c)
+		if c.Username != "$listener$" {
+			clients = append(clients, c)
+		}
 	}
 	return clients
 }

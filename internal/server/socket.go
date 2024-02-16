@@ -24,7 +24,7 @@ func (h *HarmonyCloudServer) closeControlSocket(ctx context.Context, userId stri
 	delete(h.clients, userId)
 	if h.leader != nil && h.leader.UserId == userId {
 		for _, c := range h.clients {
-			if c != nil {
+			if c != nil && c.Username != "$listener$" {
 				err := h.setLeader(ctx, c)
 				if err != nil {
 					return err
