@@ -2,7 +2,6 @@ package midi
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"gitlab.com/gomidi/midi/v2"
@@ -63,20 +62,11 @@ func (m *MidiPlayer) GetVelocity() uint8 {
 }
 
 func (m *MidiPlayer) PlayChord(chord []uint8) {
-	effectiveDelay := m.noteDelay
-
-	if effectiveDelay == 0 {
-		rand.Shuffle(len(chord), func(i, j int) {
-			chord[i], chord[j] = chord[j], chord[i]
-		})
-		effectiveDelay = 1
-	}
-
 	for _, note := range chord {
 		m.send(midi.NoteOn(0, note, m.velocity))
 		m.minNote = min(m.minNote, note)
 		m.maxNote = max(m.maxNote, note)
-		time.Sleep(time.Microsecond * time.Duration(effectiveDelay * 500))
+		time.Sleep(time.Millisecond * time.Duration(m.noteDelay))
 	}
 }
 
