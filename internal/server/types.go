@@ -48,8 +48,8 @@ const (
     ManualChordUp                    // 21
     GetPlaybackMode                  // 22
     SetPlaybackMode                  // 23
-    GetManualModeIndex               // 24
-    SetManualModeIndex               // 25
+    GetManualModeChord               // 24
+    SetManualModeChord               // 25
 )
 
 func (c ControlEventType) String() string {
@@ -102,10 +102,10 @@ func (c ControlEventType) String() string {
         return "GetPlaybackMode"
     case SetPlaybackMode:
         return "SetPlaybackMode"
-    case GetManualModeIndex:
-        return "GetManualModeIndex"
-    case SetManualModeIndex:
-        return "SetManualModeIndex"
+    case GetManualModeChord:
+        return "GetManualModeChord"
+    case SetManualModeChord:
+        return "SetManualModeChord"
     default:
         return ""
     }
@@ -139,6 +139,8 @@ type ControlPayload struct {
     NoteDelay int64 `json:"noteDelay"`
     Velocity uint8 `json:"velocity"`
     PlaybackMode string `json:"playbackMode"`
+    Row int `json:"row"`
+    Col int `json:"col"`
 }
 
 type ControlEvent struct {

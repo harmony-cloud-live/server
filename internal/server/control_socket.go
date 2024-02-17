@@ -47,8 +47,9 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 		return h.marshalAndSend(ctx, c, GetVelocity, ControlPayload{Velocity: h.midiPlayer.GetVelocity()})
 	case GetPlaybackMode:
 		return h.marshalAndSend(ctx, c, GetPlaybackMode, ControlPayload{PlaybackMode: h.state.GetPlaybackMode()})
-	case GetManualModeIndex:
-		return h.marshalAndSend(ctx, c, GetManualModeIndex, ControlPayload{Index: h.state.GetManualModeIndex()})
+	case GetManualModeChord:
+		row, col := h.state.GetManualModeChord()
+		return h.marshalAndSend(ctx, c, GetManualModeChord, ControlPayload{Row: row, Col: col})
 	case SetUsername:
 		username := evt.Payload.Username
 		if username != "" {
@@ -132,12 +133,12 @@ func (h *HarmonyCloudServer) handleControlEvent(ctx context.Context, c *websocke
 			return err
 		}
 		return h.marshalAndBroadcast(ctx, userId, GetPlaybackMode, ControlPayload{PlaybackMode: playbackMode})
-	case SetManualModeIndex:
+	case SetManualModeChord:
 		if h.leader != h.clients[userId] {
 			return fmt.Errorf("[ERROR] only leader can set manual mode index")
 		}
-		index := h.state.SetManualModeIndex(evt.Payload.Index)
-		return h.marshalAndBroadcast(ctx, userId, GetManualModeIndex, ControlPayload{Index: index})
+		row, col := h.state.SetManualModeChord(evt.Payload.Row, evt.Payload.Col)
+		return h.marshalAndBroadcast(ctx, userId, GetManualModeChord, ControlPayload{Row: row, Col: col})
 	case ManualChordDown:
 		if h.leader != h.clients[userId] {
 			return fmt.Errorf("[ERROR] only leader can manually play chord")

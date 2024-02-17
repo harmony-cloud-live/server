@@ -10,7 +10,8 @@ type PlaybackState struct {
 	loopStart int
 	loopEnd int
     playbackMode string
-    manualModeIndex int
+    manualModeRow int
+    manualModeCol int
 }
 
 func NewPlaybackState() *PlaybackState {
@@ -23,13 +24,14 @@ func NewPlaybackState() *PlaybackState {
 	}
 }
 
-func (p *PlaybackState) GetManualModeIndex() int {
-    return p.manualModeIndex
+func (p *PlaybackState) GetManualModeChord() (int, int) {
+    return p.manualModeRow, p.manualModeCol
 }
 
-func (p *PlaybackState) SetManualModeIndex(index int) int {
-    p.manualModeIndex = index
-    return p.manualModeIndex
+func (p *PlaybackState) SetManualModeChord(row, col int) (int, int) {
+    p.manualModeRow = row
+    p.manualModeCol = col
+    return p.manualModeRow, p.manualModeCol
 }
 
 func (p *PlaybackState) GetPlaybackMode() string {
