@@ -38,7 +38,7 @@ func run() error {
 	}
 	defer midiPlayer.Close()
 	
-	oscClient := osc.NewOscClient("192.168.1.70", 7000)
+	oscClient := osc.NewOscClient("192.168.1.32", 7000)
 
 	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer rdb.Close()
@@ -48,7 +48,7 @@ func run() error {
 		return err
 	}
 	
-	apiClient, err := music.NewApiClient("192.168.1.212:5000", "internal/data/chords.json", transposer)
+	apiClient, err := music.NewApiClient("192.168.1.42:5000", "internal/data/chords.json", transposer)
 	if err != nil {
 		return err
 	}
